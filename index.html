@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Packing Tracker</title>
+  <style>
+    body {
+      background-color: #000000;
+      color: #57B6FF;
+      font-family: Helvetica, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background-color: #1a1a1a;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    h1, h2, h3 {
+      color: #57B6FF;
+    }
+    form, .items-area {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+      text-align: left;
+    }
+    input {
+      width: 100%;
+      max-width: 400px;
+      padding: 10px;
+      margin: 5px auto 15px;
+      border: 1px solid #57B6FF;
+      border-radius: 6px;
+      background: #000;
+      color: #57B6FF;
+      font-size: 16px;
+      display: block;
+    }
+    button {
+      background-color: #57B6FF;
+      border: none;
+      color: #000;
+      padding: 12px 20px;
+      margin: 10px 5px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      font-size: 16px;
+      min-width: 120px;
+    }
+    button:hover {
+      background-color: #3a8edc;
+      color: #fff;
+    }
+    .table-container {
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      min-width: 600px; /* keeps columns from squishing */
+      border-collapse: collapse;
+      background: #1a1a1a;
+    }
+    th, td {
+      border: 1px solid #57B6FF;
+      padding: 12px;
+      text-align: center;
+      font-size: 16px;
+    }
+    th {
+      background: #000;
+      color: #57B6FF;
+    }
+    #summary {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    #skuSummary {
+      margin-top: 20px;
+      background: #000;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #57B6FF;
+      text-align: left;
+    }
+    img.logo {
+      max-width: 220px;
+      margin-bottom: 20px;
+    }
+
+    /* 📱 Responsive adjustments */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      .container {
+        padding: 15px;
+      }
+      input {
+        font-size: 18px;
+      }
+      button {
+        font-size: 18px;
+        width: 100%;
+        max-width: none;
+      }
+      table {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Replace with actual logo file path -->
+  <img src="static/footscientificlogo.png" alt="Logo" class="logo" />
+
+  <div class="container">
+    <h1>Packing Tracker</h1>
+
+    <form id="boxForm">
+      <h2>New Box</h2>
+      <label>Box ID:</label>
+      <input type="text" id="boxId" required>
+      <label>Length:</label>
+      <input type="number" id="length" required>
+      <label>Width:</label>
+      <input type="number" id="width" required>
+      <label>Height:</label>
+      <input type="number" id="height" required>
+      <label>Weight:</label>
+      <input type="number" id="weight" step="0.1" required>
+      <button type="submit">Start Box</button>
+    </form>
+
+    <div id="itemSection" class="items-area" style="display:none;">
+      <h2>Add Items to Box: <span id="currentBoxId"></span></h2>
+      <label>SKU:</label>
+      <input type="text" id="sku">
+      <label>Quantity:</label>
+      <input type="number" id="qty">
+      <button id="addItemBtn">Add Item</button>
+      <button id="finishBoxBtn">Finish Box</button>
+    </div>
+
+    <div class="table-container">
+      <table id="boxTable">
+        <thead>
+          <tr>
+            <th>Box ID</th>
+            <th>Dimensions (LxWxH)</th>
+            <th>Weight</th>
+            <th>Items</th>
+            <th>Total Items in Box</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div id="summary">TOTAL ITEMS PACKED: 0</div>
+    <div id="skuSummary"></div>
+  </div>
+
+<script>
+  const boxForm = document.getElementById('boxForm');
+  const itemSection = document.getElementById('itemSection');
+  const currentBoxIdSpan = document.getElementById('currentBoxId');
+  const boxTableBody = document.querySelector('#boxTable tbody');
+  const summary = document.getElementById('summary');
+  const skuSummary = document.getElementById('skuSummary');
+
+  let currentBox = null;
+  let boxes = [];
+  let totalPacked = 0;
+
+  boxForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    currentBox = {
+      id: document.getElementById('boxId').value,
+      length: document.getElementById('length').value,
+      width: document.getElementById('width').value,
+      height: document.getElementById('height').value,
+      weight: document.getElementById('weight').value,
+      items: []
+    };
+    currentBoxIdSpan.textContent = currentBox.id;
+    itemSection.style.display = 'block';
+    boxForm.reset();
+  });
+
+  document.getElementById('addItemBtn').addEventListener('click', function() {
+    const sku = document.getElementById('sku').value;
+    const qty = parseInt(document.getElementById('qty').value, 10);
+    if (!sku || !qty) return;
+    currentBox.items.push({ sku, qty });
+    totalPacked += qty;
+    summary.textContent = `TOTAL ITEMS PACKED: ${totalPacked}`;
+    document.getElementById('sku').value = '';
+    document.getElementById('qty').value = '';
+  });
+
+  document.getElementById('finishBoxBtn').addEventListener('click', function() {
+    if (!currentBox) return;
+    boxes.push(currentBox);
+
+    const totalInBox = currentBox.items.reduce((sum, i) => sum + i.qty, 0);
+    const itemsList = currentBox.items.map(i => `${i.sku} (${i.qty})`).join(', ');
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${currentBox.id}</td>
+      <td>${currentBox.length} x ${currentBox.width} x ${currentBox.height}</td>
+      <td>${parseFloat(currentBox.weight).toFixed(1)} lbs</td>
+      <td>${itemsList}</td>
+      <td>${totalInBox}</td>
+    `;
+    boxTableBody.appendChild(row);
+
+    updateSkuSummary();
+
+    currentBox = null;
+    itemSection.style.display = 'none';
+  });
+
+  function updateSkuSummary() {
+    let skuTotals = {};
+
+    boxes.forEach(box => {
+      box.items.forEach(item => {
+        if (!skuTotals[item.sku]) {
+          skuTotals[item.sku] = 0;
+        }
+        skuTotals[item.sku] += item.qty;
+      });
+    });
+
+    let summaryHtml = "<h3>SKU Totals:</h3><ul>";
+    for (let sku in skuTotals) {
+      summaryHtml += `<li>${sku}: ${skuTotals[sku]}</li>`;
+    }
+    summaryHtml += "</ul>";
+
+    skuSummary.innerHTML = summaryHtml;
+  }
+</script>
+
+</body>
+</html>
+
