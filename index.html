@@ -272,6 +272,7 @@
     summary.textContent = "TOTAL ITEMS PACKED: 0";
     skuSummary.innerHTML = '';
     itemSection.style.display = 'none';
+    boxForm.reset(); // ✅ reset form fields too
 
     // hide Clear button again until something new is added
     clearAllBtn.style.display = 'none';
@@ -280,3 +281,5 @@
 
 </body>
 </html>
+
+
