@@ -167,6 +167,11 @@
 
     <div id="summary">TOTAL ITEMS PACKED: 0</div>
     <div id="skuSummary"></div>
+
+    <!-- ⭐ Clear/Restart button (hidden until needed) -->
+    <button id="clearAllBtn" style="background:#ff4444; color:white; margin-top:20px; display:none;">
+      Clear All
+    </button>
   </div>
 
 <script>
@@ -176,6 +181,7 @@
   const boxTableBody = document.querySelector('#boxTable tbody');
   const summary = document.getElementById('summary');
   const skuSummary = document.getElementById('skuSummary');
+  const clearAllBtn = document.getElementById('clearAllBtn');
 
   let currentBox = null;
   let boxes = [];
@@ -226,6 +232,9 @@
 
     updateSkuSummary();
 
+    // show Clear button once something is added
+    clearAllBtn.style.display = 'inline-block';
+
     currentBox = null;
     itemSection.style.display = 'none';
   });
@@ -250,8 +259,24 @@
 
     skuSummary.innerHTML = summaryHtml;
   }
+
+  // Clear/Restart function
+  clearAllBtn.addEventListener('click', function() {
+    if (!confirm("Are you sure you want to clear everything and restart?")) return;
+
+    boxes = [];
+    currentBox = null;
+    totalPacked = 0;
+
+    boxTableBody.innerHTML = '';
+    summary.textContent = "TOTAL ITEMS PACKED: 0";
+    skuSummary.innerHTML = '';
+    itemSection.style.display = 'none';
+
+    // hide Clear button again until something new is added
+    clearAllBtn.style.display = 'none';
+  });
 </script>
 
 </body>
 </html>
-
