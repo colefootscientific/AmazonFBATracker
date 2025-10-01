@@ -21,7 +21,7 @@
     h1, h2, h3 {
       color: #57B6FF;
     }
-    form, .items-area {
+    form, .items-area, .finish-area {
       margin-bottom: 20px;
     }
     label {
@@ -63,7 +63,7 @@
     }
     table {
       width: 100%;
-      min-width: 600px; /* keeps columns from squishing */
+      min-width: 600px;
       border-collapse: collapse;
       background: #1a1a1a;
     }
@@ -94,52 +94,32 @@
       max-width: 220px;
       margin-bottom: 20px;
     }
-
-    /* 📱 Responsive adjustments */
+    /* 📱 Responsive */
     @media (max-width: 768px) {
-      body {
-        padding: 10px;
-      }
-      .container {
-        padding: 15px;
-      }
-      input {
-        font-size: 18px;
-      }
-      button {
-        font-size: 18px;
-        width: 100%;
-        max-width: none;
-      }
-      table {
-        font-size: 14px;
-      }
+      body { padding: 10px; }
+      .container { padding: 15px; }
+      input { font-size: 18px; }
+      button { font-size: 18px; width: 100%; max-width: none; }
+      table { font-size: 14px; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Replace with actual logo file path -->
   <img src="static/footscientificlogo.png" alt="Logo" class="logo" />
 
   <div class="container">
     <h1>Packing Tracker</h1>
 
+    <!-- Step 1: Box ID -->
     <form id="boxForm">
       <h2>New Box</h2>
       <label>Box ID:</label>
       <input type="text" id="boxId" required>
-      <label>Length:</label>
-      <input type="number" id="length" required>
-      <label>Width:</label>
-      <input type="number" id="width" required>
-      <label>Height:</label>
-      <input type="number" id="height" required>
-      <label>Weight:</label>
-      <input type="number" id="weight" step="0.1" required>
       <button type="submit">Start Box</button>
     </form>
 
+    <!-- Step 2: Items -->
     <div id="itemSection" class="items-area" style="display:none;">
       <h2>Add Items to Box: <span id="currentBoxId"></span></h2>
       <label>SKU:</label>
@@ -148,6 +128,20 @@
       <input type="number" id="qty">
       <button id="addItemBtn">Add Item</button>
       <button id="finishBoxBtn">Finish Box</button>
+    </div>
+
+    <!-- Step 3: Dimensions + Weight -->
+    <div id="finishSection" class="finish-area" style="display:none;">
+      <h2>Enter Dimensions & Weight</h2>
+      <label>Length:</label>
+      <input type="number" id="length">
+      <label>Width:</label>
+      <input type="number" id="width">
+      <label>Height:</label>
+      <input type="number" id="height">
+      <label>Weight (lbs):</label>
+      <input type="number" id="weight" step="0.1">
+      <button id="saveBoxBtn">Save Box</button>
     </div>
 
     <div class="table-container">
@@ -168,7 +162,6 @@
     <div id="summary">TOTAL ITEMS PACKED: 0</div>
     <div id="skuSummary"></div>
 
-    <!-- ⭐ Clear/Restart button (hidden until needed) -->
     <button id="clearAllBtn" style="background:#ff4444; color:white; margin-top:20px; display:none;">
       Clear All
     </button>
@@ -177,6 +170,7 @@
 <script>
   const boxForm = document.getElementById('boxForm');
   const itemSection = document.getElementById('itemSection');
+  const finishSection = document.getElementById('finishSection');
   const currentBoxIdSpan = document.getElementById('currentBoxId');
   const boxTableBody = document.querySelector('#boxTable tbody');
   const summary = document.getElementById('summary');
@@ -187,21 +181,17 @@
   let boxes = [];
   let totalPacked = 0;
 
+  // Step 1: Start box with ID
   boxForm.addEventListener('submit', function(e) {
     e.preventDefault();
-    currentBox = {
-      id: document.getElementById('boxId').value,
-      length: document.getElementById('length').value,
-      width: document.getElementById('width').value,
-      height: document.getElementById('height').value,
-      weight: document.getElementById('weight').value,
-      items: []
-    };
+    currentBox = { id: document.getElementById('boxId').value, items: [] };
     currentBoxIdSpan.textContent = currentBox.id;
     itemSection.style.display = 'block';
+    finishSection.style.display = 'none';
     boxForm.reset();
   });
 
+  // Step 2: Add items
   document.getElementById('addItemBtn').addEventListener('click', function() {
     const sku = document.getElementById('sku').value;
     const qty = parseInt(document.getElementById('qty').value, 10);
@@ -213,8 +203,22 @@
     document.getElementById('qty').value = '';
   });
 
+  // Show dimension/weight fields
   document.getElementById('finishBoxBtn').addEventListener('click', function() {
     if (!currentBox) return;
+    itemSection.style.display = 'none';
+    finishSection.style.display = 'block';
+  });
+
+  // Step 3: Save box after entering dimensions/weight
+  document.getElementById('saveBoxBtn').addEventListener('click', function() {
+    if (!currentBox) return;
+
+    currentBox.length = document.getElementById('length').value || 0;
+    currentBox.width = document.getElementById('width').value || 0;
+    currentBox.height = document.getElementById('height').value || 0;
+    currentBox.weight = document.getElementById('weight').value || 0;
+
     boxes.push(currentBox);
 
     const totalInBox = currentBox.items.reduce((sum, i) => sum + i.qty, 0);
@@ -232,21 +236,23 @@
 
     updateSkuSummary();
 
-    // show Clear button once something is added
     clearAllBtn.style.display = 'inline-block';
 
+    // reset everything for next box
     currentBox = null;
+    finishSection.style.display = 'none';
     itemSection.style.display = 'none';
+    document.getElementById('length').value = '';
+    document.getElementById('width').value = '';
+    document.getElementById('height').value = '';
+    document.getElementById('weight').value = '';
   });
 
   function updateSkuSummary() {
     let skuTotals = {};
-
     boxes.forEach(box => {
       box.items.forEach(item => {
-        if (!skuTotals[item.sku]) {
-          skuTotals[item.sku] = 0;
-        }
+        if (!skuTotals[item.sku]) skuTotals[item.sku] = 0;
         skuTotals[item.sku] += item.qty;
       });
     });
@@ -256,30 +262,28 @@
       summaryHtml += `<li>${sku}: ${skuTotals[sku]}</li>`;
     }
     summaryHtml += "</ul>";
-
     skuSummary.innerHTML = summaryHtml;
   }
 
-  // Clear/Restart function
+  // Clear all
   clearAllBtn.addEventListener('click', function() {
     if (!confirm("Are you sure you want to clear everything and restart?")) return;
-
     boxes = [];
     currentBox = null;
     totalPacked = 0;
-
     boxTableBody.innerHTML = '';
     summary.textContent = "TOTAL ITEMS PACKED: 0";
     skuSummary.innerHTML = '';
     itemSection.style.display = 'none';
-    boxForm.reset(); // ✅ reset form fields too
-
-    // hide Clear button again until something new is added
+    finishSection.style.display = 'none';
+    boxForm.reset();
     clearAllBtn.style.display = 'none';
   });
 </script>
 
 </body>
 </html>
+
+
 
 
