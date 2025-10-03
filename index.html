@@ -123,11 +123,17 @@
     <div id="itemSection" class="items-area" style="display:none;">
       <h2>Add Items to Box: <span id="currentBoxId"></span></h2>
       <label>SKU:</label>
-      <input type="text" id="sku">
+      <input type="text" id="sku" placeholder="e.g., 201-04">
       <label>Quantity:</label>
       <input type="number" id="qty">
       <button id="addItemBtn">Add Item</button>
       <button id="finishBoxBtn">Finish Box</button>
+
+      <!-- Live preview area with edit/remove -->
+      <div id="currentItemsPreview" style="margin-top:20px; text-align:left;">
+        <h3>Current Items in Box:</h3>
+        <ul id="currentItemsList"></ul>
+      </div>
     </div>
 
     <!-- Step 3: Dimensions + Weight -->
@@ -153,6 +159,7 @@
             <th>Weight</th>
             <th>Items</th>
             <th>Total Items in Box</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -176,6 +183,7 @@
   const summary = document.getElementById('summary');
   const skuSummary = document.getElementById('skuSummary');
   const clearAllBtn = document.getElementById('clearAllBtn');
+  const currentItemsList = document.getElementById('currentItemsList');
 
   let currentBox = null;
   let boxes = [];
@@ -188,17 +196,71 @@
     currentBoxIdSpan.textContent = currentBox.id;
     itemSection.style.display = 'block';
     finishSection.style.display = 'none';
+    currentItemsList.innerHTML = '';
     boxForm.reset();
   });
 
+  // SKU Validation
+  function isValidSKU(sku) {
+    const regex = /^(201|202|203|100|101)-\S+$/;
+    return regex.test(sku);
+  }
+
+  // Update live preview of items with edit/remove
+  function updateCurrentItemsPreview() {
+    currentItemsList.innerHTML = '';
+    currentBox.items.forEach((item, index) => {
+      const li = document.createElement('li');
+      li.textContent = `${item.sku} (${item.qty}) `;
+
+      // Edit button
+      const editBtn = document.createElement('button');
+      editBtn.textContent = "Edit";
+      editBtn.style.marginLeft = "10px";
+      editBtn.addEventListener('click', () => {
+        const newQty = prompt(`Enter new quantity for ${item.sku}:`, item.qty);
+        if (newQty !== null && !isNaN(newQty) && newQty > 0) {
+          totalPacked -= item.qty;
+          item.qty = parseInt(newQty, 10);
+          totalPacked += item.qty;
+          summary.textContent = `TOTAL ITEMS PACKED: ${totalPacked}`;
+          updateCurrentItemsPreview();
+        }
+      });
+
+      // Remove button
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = "Remove";
+      removeBtn.style.marginLeft = "5px";
+      removeBtn.addEventListener('click', () => {
+        totalPacked -= item.qty;
+        currentBox.items.splice(index, 1);
+        summary.textContent = `TOTAL ITEMS PACKED: ${totalPacked}`;
+        updateCurrentItemsPreview();
+      });
+
+      li.appendChild(editBtn);
+      li.appendChild(removeBtn);
+      currentItemsList.appendChild(li);
+    });
+  }
+
   // Step 2: Add items
   document.getElementById('addItemBtn').addEventListener('click', function() {
-    const sku = document.getElementById('sku').value;
+    const sku = document.getElementById('sku').value.trim();
     const qty = parseInt(document.getElementById('qty').value, 10);
-    if (!sku || !qty) return;
+
+    if (!sku || !qty) return alert("Please enter both SKU and quantity.");
+
+    if (!isValidSKU(sku)) {
+      alert("Invalid SKU! Only SKUs starting with 100-, 101-, 201-, 202-, or 203- are allowed.");
+      return;
+    }
+
     currentBox.items.push({ sku, qty });
     totalPacked += qty;
     summary.textContent = `TOTAL ITEMS PACKED: ${totalPacked}`;
+    updateCurrentItemsPreview();
     document.getElementById('sku').value = '';
     document.getElementById('qty').value = '';
   });
@@ -208,6 +270,7 @@
     if (!currentBox) return;
     itemSection.style.display = 'none';
     finishSection.style.display = 'block';
+    currentItemsList.innerHTML = '';
   });
 
   // Step 3: Save box after entering dimensions/weight
@@ -221,24 +284,12 @@
 
     boxes.push(currentBox);
 
-    const totalInBox = currentBox.items.reduce((sum, i) => sum + i.qty, 0);
-    const itemsList = currentBox.items.map(i => `${i.sku} (${i.qty})`).join(', ');
-
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${currentBox.id}</td>
-      <td>${currentBox.length} x ${currentBox.width} x ${currentBox.height}</td>
-      <td>${parseFloat(currentBox.weight).toFixed(1)} lbs</td>
-      <td>${itemsList}</td>
-      <td>${totalInBox}</td>
-    `;
-    boxTableBody.appendChild(row);
-
+    renderTable();
     updateSkuSummary();
 
     clearAllBtn.style.display = 'inline-block';
 
-    // reset everything for next box
+    // reset for next box
     currentBox = null;
     finishSection.style.display = 'none';
     itemSection.style.display = 'none';
@@ -247,6 +298,49 @@
     document.getElementById('height').value = '';
     document.getElementById('weight').value = '';
   });
+
+  function renderTable() {
+    boxTableBody.innerHTML = '';
+    boxes.forEach((box, index) => {
+      const totalInBox = box.items.reduce((sum, i) => sum + i.qty, 0);
+      const itemsList = box.items.map(i => `${i.sku} (${i.qty})`).join(', ');
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${box.id}</td>
+        <td>${box.length} x ${box.width} x ${box.height}</td>
+        <td>${parseFloat(box.weight).toFixed(1)} lbs</td>
+        <td>${itemsList}</td>
+        <td>${totalInBox}</td>
+        <td><button class="editBtn">Edit</button></td>
+      `;
+
+      row.querySelector('.editBtn').addEventListener('click', function() {
+        editBox(index);
+      });
+
+      boxTableBody.appendChild(row);
+    });
+  }
+
+  function editBox(index) {
+    currentBox = boxes[index];
+    boxes.splice(index, 1); // remove old version
+
+    document.getElementById('boxId').value = currentBox.id;
+    document.getElementById('length').value = currentBox.length;
+    document.getElementById('width').value = currentBox.width;
+    document.getElementById('height').value = currentBox.height;
+    document.getElementById('weight').value = currentBox.weight;
+
+    currentBoxIdSpan.textContent = currentBox.id;
+    itemSection.style.display = 'block';
+    finishSection.style.display = 'block';
+    updateCurrentItemsPreview();
+
+    renderTable();
+    updateSkuSummary();
+  }
 
   function updateSkuSummary() {
     let skuTotals = {};
